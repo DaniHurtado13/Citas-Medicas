@@ -1,8 +1,15 @@
-# Citas Médicas — API REST
+# Citas Médicas
 
-API para gestionar citas médicas: los pacientes reservan, cancelan y reprograman citas; los doctores administran su horario y su agenda; el administrador gestiona doctores y especialidades. Incluye notificaciones por correo, seguridad con JWT y despliegue con Docker y HTTPS.
+Sistema para gestionar citas médicas: los pacientes reservan, cancelan y reprograman citas; los doctores administran su horario y su agenda; el administrador gestiona doctores y especialidades. Incluye notificaciones por correo, seguridad con JWT y despliegue con Docker y HTTPS.
 
-**Stack:** Java 21 · Spring Boot 4 · Spring Security (JWT) · Spring Data JPA · PostgreSQL 18 · Flyway · JUnit 5 + Mockito + Testcontainers · Docker · Caddy
+El repositorio tiene dos partes:
+
+| Carpeta | Qué es |
+|---|---|
+| `medicas/` | API REST (Spring Boot) |
+| `front/clinica-celeste/` | Front (Angular), que consume la API |
+
+**Stack:** Java 21 · Spring Boot 4 · Spring Security (JWT) · Spring Data JPA · PostgreSQL 18 · Flyway · JUnit 5 + Mockito + Testcontainers · Angular 21 · Docker · Caddy
 
 ```mermaid
 flowchart LR
@@ -64,18 +71,34 @@ Reprogramar no cambia la fecha: cancela la cita y crea una nueva enlazada a la o
 
 ## Cómo ejecutarlo
 
+Todos los comandos parten de la raíz del repositorio.
+
 ### Desarrollo
 
-Requisitos: Java 21 y Docker Desktop abierto.
+Requisitos: Java 21, Node 22 y Docker Desktop abierto.
+
+**1. API** (en una terminal):
 
 ```bash
+cd medicas
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev     # en Windows: mvnw.cmd ...
 ```
 
 Spring Boot levanta solo los contenedores de `compose.yaml` (PostgreSQL, Mailpit y Caddy) y el perfil `dev` carga datos de prueba.
 
+**2. Front** (en otra terminal):
+
+```bash
+cd front/clinica-celeste
+npm install
+npm start
+```
+
+El servidor de Angular reenvía `/api` a la API en el puerto 8080 (`proxy.conf.json`).
+
 | Recurso | URL |
 |---|---|
+| **Front** | http://localhost:4200 |
 | API | http://localhost:8080/api |
 | Swagger (documentación interactiva) | http://localhost:8080/swagger-ui.html |
 | Mailpit (bandeja de los correos enviados) | http://localhost:8025 |
@@ -85,12 +108,17 @@ Usuarios de prueba, todos con la contraseña `clave123`: `paciente@citas.dev`, `
 
 ### Producción
 
+Docker Compose levanta todo junto: API, base de datos y front.
+
 ```bash
+cd medicas
 cp .env.example .env      # completar los valores
 docker compose -f compose.prod.yaml up -d --build
 ```
 
-Solo Caddy publica puertos (80 y 443) y obtiene el certificado de Let's Encrypt para `DOMINIO`. Caddy sirve el front de Angular (su imagen se construye desde `../front/clinica-celeste`) y reenvía solo `/api/*` a la app. La app y PostgreSQL quedan accesibles únicamente dentro de la red de Docker. La imagen se construye en dos etapas y corre con un usuario sin privilegios. En el perfil `prod` Swagger está apagado.
+El sitio queda en `https://<DOMINIO>` (en tu PC, `https://localhost`). Desarrollo y producción no pueden correr a la vez: los dos usan los puertos 80 y 443.
+
+Solo Caddy publica puertos (80 y 443) y obtiene el certificado de Let's Encrypt para `DOMINIO`. Caddy sirve el front de Angular (su imagen se construye desde `front/clinica-celeste/`) y reenvía solo `/api/*` a la app. La app y PostgreSQL quedan accesibles únicamente dentro de la red de Docker. La imagen se construye en dos etapas y corre con un usuario sin privilegios. En el perfil `prod` Swagger está apagado.
 
 | Variable | Para qué |
 |---|---|
@@ -104,6 +132,7 @@ Solo Caddy publica puertos (80 y 443) y obtiene el certificado de Let's Encrypt 
 ## Tests
 
 ```bash
+cd medicas
 ./mvnw test
 ```
 
@@ -112,7 +141,7 @@ Solo Caddy publica puertos (80 y 443) y obtiene el certificado de Let's Encrypt 
 ## Estructura
 
 ```
-src/main/java/com/citas/medicas
+medicas/src/main/java/com/citas/medicas
  ├── controller       endpoints REST, documentados con OpenAPI
  ├── service          reglas de negocio
  ├── repository       Spring Data JPA
@@ -126,6 +155,12 @@ src/main/java/com/citas/medicas
  ├── exception        excepciones de negocio y manejador global
  ├── config           seguridad, reloj, tareas asíncronas, admin inicial
  └── demo             reinicio nocturno de la clínica de ejemplo
-src/main/resources/db    migraciones de Flyway (y datos de prueba de dev)
-src/main/resources/demo  la clínica de ejemplo de la demo
+medicas/src/main/resources/db    migraciones de Flyway (y datos de prueba de dev)
+medicas/src/main/resources/demo  la clínica de ejemplo de la demo
+
+front/clinica-celeste/src/app
+ ├── core             cliente de la API, sesión, interceptores HTTP
+ ├── features         vistas por rol: paciente, doctor, admin, login y cuenta
+ ├── layout           marco de la app y del acceso
+ └── shared           componentes e íconos reutilizables
 ```
