@@ -1,0 +1,48 @@
+<div class="profile-head">
+  <app-avatar class="avatar-lg" [name]="auth.nombre()" />
+  <div><h1>{{ auth.nombre() }}</h1><p>{{ sub() }}</p></div>
+</div>
+
+<div class="grid-halves">
+  <section class="panel side-info">
+    <header class="panel-head"><h2>Tu cuenta</h2></header>
+    <dl>
+      @if (auth.usuario()?.nombre; as nombre) {
+        <div><dt>Nombre</dt><dd>{{ nombre }}</dd></div>
+      }
+      <div><dt>Correo</dt><dd>{{ auth.usuario()?.email }}</dd></div>
+      <div><dt>Tipo de cuenta</dt><dd>{{ tipoCuenta() }}</dd></div>
+      @if (doctor(); as d) {
+        <div><dt>Especialidad</dt><dd>{{ d.especialidadNombre }}</dd></div>
+        <div><dt>Consultorio</dt><dd>{{ d.consultorio }}</dd></div>
+        <div><dt>Duración de cada cita</dt><dd>{{ d.duracionConsultaMin }} minutos</dd></div>
+      }
+    </dl>
+    <p class="muted small" style="margin-top:16px">
+      {{ rol() === 'DOCTOR' ? 'Tu especialidad, consultorio y duración de cita los actualiza el administrador.' : 'Si necesitas corregir estos datos, comunícate con la clínica.' }}
+    </p>
+  </section>
+
+  <form class="panel" novalidate (submit)="cambiarPassword($event)">
+    <header class="panel-head"><h2>Cambiar contraseña</h2></header>
+    <div class="form-grid">
+      <div class="field span-2" [class.has-error]="campo() === 'actual'">
+        <label for="p-actual">Contraseña actual</label>
+        <input id="p-actual" type="password" autocomplete="current-password" [value]="actual()" (input)="actual.set($any($event.target).value)">
+      </div>
+      <div class="field" [class.has-error]="campo() === 'nueva'">
+        <label for="p-nueva">Nueva contraseña</label>
+        <input id="p-nueva" type="password" autocomplete="new-password" [attr.maxlength]="passwordMax" placeholder="Mínimo 8 caracteres" [value]="nueva()" (input)="nueva.set($any($event.target).value)">
+      </div>
+      <div class="field" [class.has-error]="campo() === 'confirmar'">
+        <label for="p-conf">Repite la nueva</label>
+        <input id="p-conf" type="password" autocomplete="new-password" [attr.maxlength]="passwordMax" [value]="confirmar()" (input)="confirmar.set($any($event.target).value)">
+      </div>
+    </div>
+    <p class="form-error" role="alert">{{ error() }}</p>
+    <p class="muted small" style="margin-top:12px">Al cambiarla se cierran todas tus sesiones, también esta, y vuelves a entrar con la nueva.</p>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [class.is-loading]="guardando()" [disabled]="guardando()"><span class="btn-label">Actualizar contraseña</span><span class="spinner"></span></button>
+    </div>
+  </form>
+</div>

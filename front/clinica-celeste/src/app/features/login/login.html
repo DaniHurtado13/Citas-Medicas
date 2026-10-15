@@ -1,0 +1,65 @@
+<div class="login-form">
+  <h1>Inicia sesión</h1>
+  <p class="lead">Entra con el correo y la contraseña de tu cuenta.</p>
+
+  <form class="login-campos" novalidate (submit)="submit($event)">
+    <div class="field" [class.has-error]="errField() === 'email'">
+      <label for="login-email">Correo</label>
+      <input id="login-email" type="email" autocomplete="email" placeholder="nombre@correo.co" [value]="email()" (input)="email.set($any($event.target).value)">
+    </div>
+
+    <div class="field" [class.has-error]="errField() === 'pass'">
+      <div class="field-row">
+        <label for="login-pass">Contraseña</label>
+        <a routerLink="/olvide-password" class="link small">¿Olvidaste tu contraseña?</a>
+      </div>
+      <div class="input-wrap">
+        <input id="login-pass" [type]="showPass() ? 'text' : 'password'" autocomplete="current-password"
+               [value]="pass()" (input)="pass.set($any($event.target).value)">
+        <button type="button" class="input-icon" [class.is-on]="showPass()" (click)="showPass.set(!showPass())"
+                [attr.aria-label]="showPass() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+          <svg appIcon="eye"></svg>
+        </button>
+      </div>
+    </div>
+
+    <p class="form-error" role="alert">{{ error() }}</p>
+
+    @if (sinConfirmar()) {
+      <div class="notice">
+        <svg appIcon="alert"></svg>
+        <span>{{ reenviado() ? 'Te enviamos un correo nuevo. Abre el enlace y vuelve a iniciar sesión.' : '¿No te llegó el correo de confirmación?' }}</span>
+        @if (!reenviado()) { <button type="button" [disabled]="reenviando()" (click)="reenviar()">Reenviar</button> }
+      </div>
+    }
+
+    <button type="submit" class="btn btn-primary btn-block btn-lg" [class.is-loading]="loading()" [disabled]="ocupado()">
+      <span class="btn-label">Iniciar sesión</span>
+      <span class="spinner" aria-hidden="true"></span>
+    </button>
+  </form>
+
+  <p class="login-foot">¿Es tu primera vez? <a routerLink="/registro" class="link">Crea tu cuenta de paciente</a></p>
+
+  <section class="demo" aria-labelledby="demo-titulo">
+    <h2 id="demo-titulo">¿Solo quieres conocer la clínica?</h2>
+    <p class="muted small">Entra con una cuenta de ejemplo, sin registrarte.</p>
+
+    <div class="demo-cuentas">
+      @for (c of cuentasDemo; track c.rol) {
+        <button type="button" class="demo-cuenta" [class.is-loading]="entrandoComo() === c.rol" [disabled]="ocupado()"
+                (click)="entrarComoDemo(c.rol)">
+          <svg [appIcon]="c.icono"></svg>
+          <span class="demo-texto">
+            <span class="demo-accion">{{ c.accion }}</span>
+            <span class="demo-detalle">{{ c.detalle }}</span>
+          </span>
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+      }
+    </div>
+
+    <p class="form-error" role="alert">{{ demoError() }}</p>
+    <p class="demo-nota">Los datos de ejemplo vuelven a su estado inicial cada noche.</p>
+  </section>
+</div>
