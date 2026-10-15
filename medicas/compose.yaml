@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: 'postgres:18'
+    environment:
+      - 'POSTGRES_DB=mydatabase'
+      - 'POSTGRES_PASSWORD=secret'
+      - 'POSTGRES_USER=myuser'
+    ports:
+      - '127.0.0.1::5432'
+  mail:
+    image: 'axllent/mailpit:v1.31.4'
+    ports:
+      - '127.0.0.1:8025:8025'
+      - '127.0.0.1:1025:1025'
+  proxy:
+    image: 'caddy:2.10'
+    ports:
+      - '127.0.0.1:443:443'
+      - '127.0.0.1:80:80'
+    volumes:
+      - './Caddyfile:/etc/caddy/Caddyfile:ro'
+      - 'caddy_data:/data'
+
+volumes:
+  caddy_data:

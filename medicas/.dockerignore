@@ -1,0 +1,11 @@
+target/
+almacenamiento/
+.idea/
+.vscode/
+*.iml
+.git/
+.mvn/wrapper/maven-wrapper.jar
+compose*.yaml
+Caddyfile*
+.env*
+HELP.md

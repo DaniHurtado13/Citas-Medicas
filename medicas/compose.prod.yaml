@@ -1,0 +1,65 @@
+name: citas-prod
+
+services:
+  app:
+    build: .
+    image: 'citas-medicas:prod'
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: 'jdbc:postgresql://postgres:5432/${POSTGRES_DB:?falta POSTGRES_DB}'
+      SPRING_DATASOURCE_USERNAME: '${POSTGRES_USER:?falta POSTGRES_USER}'
+      SPRING_DATASOURCE_PASSWORD: '${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}'
+      JWT_SECRET: '${JWT_SECRET:?falta JWT_SECRET}'
+      MAIL_HOST: '${MAIL_HOST:?falta MAIL_HOST}'
+      MAIL_PORT: '${MAIL_PORT:-587}'
+      MAIL_USERNAME: '${MAIL_USERNAME:?falta MAIL_USERNAME}'
+      MAIL_PASSWORD: '${MAIL_PASSWORD:?falta MAIL_PASSWORD}'
+      MAIL_REMITENTE: '${MAIL_REMITENTE:?falta MAIL_REMITENTE}'
+      CERTIFICADOS_DIR: /app/almacenamiento/certificados
+      FRONT_URL: 'https://${DOMINIO:?falta DOMINIO}'
+      ADMIN_EMAIL: '${ADMIN_EMAIL:-}'
+      ADMIN_PASSWORD: '${ADMIN_PASSWORD:-}'
+      ADMIN_TIPO_DOCUMENTO: '${ADMIN_TIPO_DOCUMENTO:-CC}'
+      ADMIN_DOCUMENTO: '${ADMIN_DOCUMENTO:-}'
+      DEMO_HABILITADA: '${DEMO_HABILITADA:-false}'
+    volumes:
+      - 'certificados:/app/almacenamiento/certificados'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: 'postgres:18'
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: '${POSTGRES_DB:?falta POSTGRES_DB}'
+      POSTGRES_USER: '${POSTGRES_USER:?falta POSTGRES_USER}'
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}'
+    volumes:
+      - 'postgres_datos:/var/lib/postgresql'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  proxy:
+    build: ../front/clinica-celeste
+    image: 'citas-front:prod'
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMINIO: '${DOMINIO:?falta DOMINIO}'
+    volumes:
+      - './Caddyfile.prod:/etc/caddy/Caddyfile:ro'
+      - 'caddy_datos:/data'
+    depends_on:
+      - app
+
+volumes:
+  postgres_datos:
+  certificados:
+  caddy_datos:
