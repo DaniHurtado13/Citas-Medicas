@@ -30,22 +30,42 @@ const MESES = [...new Set([mesDe(addDays(TODAY, -30)), mesDe(TODAY), mesDe(addDa
       <app-stat-strip [items]="stats()" />
 
       <div class="grid-2">
-        <section class="panel">
-          <header class="panel-head"><h2>Citas de hoy</h2><span class="muted small">{{ today().length }} en total</span></header>
-          @if (today().length) {
-            <ul class="timeline">
-              @for (c of today(); track c.id) {
-                <li class="tl-item" [class.is-past]="hora(c.fechaHora) < now">
-                  <time>{{ c.fechaHora | hora }}</time>
-                  <div class="tl-body"><strong>{{ c.pacienteNombre }}</strong><span>{{ c.motivoConsulta }}</span></div>
-                  <app-badge [estado]="c.estado" />
-                </li>
-              }
-            </ul>
-          } @else {
-            <div class="empty"><svg appIcon="leaf"></svg><p>No tienes citas hoy. Aprovecha para revisar las de mañana.</p></div>
-          }
-        </section>
+        <div class="col">
+          <section class="panel">
+            <header class="panel-head"><h2>Citas de hoy</h2><span class="muted small">{{ today().length }} en total</span></header>
+            @if (today().length) {
+              <ul class="timeline">
+                @for (c of today(); track c.id) {
+                  <li class="tl-item" [class.is-past]="hora(c.fechaHora) < now">
+                    <time>{{ c.fechaHora | hora }}</time>
+                    <div class="tl-body"><strong>{{ c.pacienteNombre }}</strong><span>{{ c.motivoConsulta }}</span></div>
+                    <app-badge [estado]="c.estado" />
+                  </li>
+                }
+              </ul>
+            } @else {
+              <div class="empty"><svg appIcon="leaf"></svg><p>No tienes citas hoy. Aprovecha para revisar las de mañana.</p></div>
+            }
+          </section>
+
+          <section class="panel">
+            <header class="panel-head"><h2>Estados del mes</h2><span class="muted small">{{ month().length }} citas</span></header>
+            @if (month().length) {
+              <div class="stackbar">
+                @for (c of counts(); track c[0]; let i = $index) {
+                  <span [attr.data-s]="key(c[0])" [style.--w]="(c[1] / total()) * 100 + '%'" [style.animation-delay.ms]="i * 80" [title]="estados[c[0]] + ': ' + c[1]"></span>
+                }
+              </div>
+              <div class="legend">
+                @for (c of counts(); track c[0]) {
+                  <span [attr.data-s]="key(c[0])"><i></i>{{ estados[c[0]] }} <b>{{ c[1] }}</b></span>
+                }
+              </div>
+            } @else {
+              <p class="muted">Aún no hay citas este mes.</p>
+            }
+          </section>
+        </div>
 
         <div class="col">
           <section class="panel next-card">
@@ -65,24 +85,6 @@ const MESES = [...new Set([mesDe(addDays(TODAY, -30)), mesDe(TODAY), mesDe(addDa
           <section class="panel">
             <header class="panel-head"><h2>Próximos 7 días</h2><span class="muted small">Citas activas</span></header>
             <app-bar-chart [data]="days()" [hl]="0" />
-          </section>
-
-          <section class="panel">
-            <header class="panel-head"><h2>Estados del mes</h2><span class="muted small">{{ month().length }} citas</span></header>
-            @if (month().length) {
-              <div class="stackbar">
-                @for (c of counts(); track c[0]; let i = $index) {
-                  <span [attr.data-s]="key(c[0])" [style.--w]="(c[1] / total()) * 100 + '%'" [style.animation-delay.ms]="i * 80" [title]="estados[c[0]] + ': ' + c[1]"></span>
-                }
-              </div>
-              <div class="legend">
-                @for (c of counts(); track c[0]) {
-                  <span [attr.data-s]="key(c[0])"><i></i>{{ estados[c[0]] }} <b>{{ c[1] }}</b></span>
-                }
-              </div>
-            } @else {
-              <p class="muted">Aún no hay citas este mes.</p>
-            }
           </section>
         </div>
       </div>
