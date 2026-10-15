@@ -1,11 +1,15 @@
 import { Component } from '@angular/core';
-import { Bloqueos } from './bloqueos';
-import { HorarioSemanal } from './horario-semanal';
+import { BloqueoForm, BloqueosEstado, BloqueosLista } from './bloqueos';
+import { HorarioSemanalEstado, HorarioSemanalForm, HorarioSemanalLista } from './horario-semanal';
 
-/** "¿Cuándo atiendo?": el horario semanal y los periodos bloqueados, juntos en una sola página */
+/**
+ * "¿Cuándo atiendo?": el horario semanal y los periodos bloqueados, juntos en una sola página.
+ * Listas a la izquierda y formularios a la derecha, en dos columnas que no dependen de la altura de la otra.
+ */
 @Component({
   selector: 'app-doctor-horario',
-  imports: [HorarioSemanal, Bloqueos],
+  imports: [HorarioSemanalLista, HorarioSemanalForm, BloqueosLista, BloqueoForm],
+  providers: [HorarioSemanalEstado, BloqueosEstado],
   template: `
     <section class="page-head">
       <div>
@@ -14,9 +18,15 @@ import { HorarioSemanal } from './horario-semanal';
       </div>
     </section>
 
-    <div class="col">
-      <app-horario-semanal />
-      <app-bloqueos />
+    <div class="grid-2 horario-cols">
+      <div class="col">
+        <app-horario-lista />
+        <app-bloqueos-lista />
+      </div>
+      <div class="col">
+        <app-horario-form />
+        <app-bloqueo-form />
+      </div>
     </div>`,
 })
 export class DoctorHorario {}

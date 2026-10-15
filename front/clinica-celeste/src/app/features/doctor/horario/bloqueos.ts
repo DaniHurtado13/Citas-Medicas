@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { BloqueosApi } from '../../../core/api/bloqueos.api';
 import { BloqueoResponse } from '../../../core/api/dtos';
@@ -13,91 +13,33 @@ const local = (fh: string) => fh.slice(0, 16);
 /**
  * Periodos en que el doctor no atiende (vacaciones, congresos). El back no deja bloquear
  * un rango con citas pendientes o confirmadas (409): primero hay que cancelarlas.
+ * La lista y el formulario son componentes aparte (van en columnas distintas) y comparten este estado.
  */
-@Component({
-  selector: 'app-bloqueos',
-  imports: [Icon],
-  template: `
-    <div class="grid-2">
-      <section class="panel">
-        <header class="panel-head"><h2>Bloqueos de agenda</h2><span class="muted small">Vacaciones, congresos o ausencias</span></header>
-        @if (!cargado() || errorCarga()) {
-          <div class="empty" [attr.role]="errorCarga() ? 'alert' : 'status'">
-            @if (errorCarga()) {
-              <svg appIcon="alert"></svg><p>{{ errorCarga() }}</p>
-              <button class="btn btn-ghost btn-sm" (click)="cargar()"><svg appIcon="refresh"></svg> Reintentar</button>
-            } @else {
-              <svg appIcon="clock"></svg><p>Cargando tus bloqueos…</p>
-            }
-          </div>
-        } @else if (bloqueos().length) {
-          <div class="pref-list">
-            @for (b of bloqueos(); track b.id) {
-              <div class="pref" [class.is-editing]="editando()?.id === b.id">
-                <div><strong>{{ rango(b) }}</strong><span>{{ b.motivo || 'Sin motivo' }}</span></div>
-                <div class="row-actions">
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="editar(b)">Editar</button>
-                  <button type="button" class="btn btn-soft-danger btn-sm" (click)="eliminar(b)">Quitar</button>
-                </div>
-              </div>
-            }
-          </div>
-        } @else {
-          <div class="empty"><svg appIcon="leaf"></svg><p>No tienes bloqueos próximos. Tu agenda sigue tu horario semanal.</p></div>
-        }
-      </section>
-
-      <form class="panel" novalidate (submit)="guardar($event)">
-        <header class="panel-head"><h2>{{ editando() ? 'Editar bloqueo' : 'Bloquear un periodo' }}</h2></header>
-        <div class="form-grid">
-          <div class="field" [class.has-error]="campoError()">
-            <label for="b-desde">Desde</label>
-            <input id="b-desde" type="datetime-local" step="900" [min]="minimo" [value]="desde()" (input)="desde.set($any($event.target).value)">
-          </div>
-          <div class="field" [class.has-error]="campoError()">
-            <label for="b-hasta">Hasta</label>
-            <input id="b-hasta" type="datetime-local" step="900" [min]="desde() || minimo" [value]="hasta()" (input)="hasta.set($any($event.target).value)">
-          </div>
-          <div class="field span-2">
-            <label for="b-motivo">Motivo <span class="muted">(opcional)</span></label>
-            <input id="b-motivo" type="text" maxlength="255" placeholder="Por ejemplo: congreso de medicina interna" [value]="motivo()" (input)="motivo.set($any($event.target).value)">
-          </div>
-        </div>
-        <p class="form-error" role="alert">{{ error() }}</p>
-        <div class="form-actions">
-          @if (editando()) { <button type="button" class="btn btn-ghost" (click)="limpiar()">Cancelar edición</button> }
-          <button type="submit" class="btn btn-primary" [class.is-loading]="guardando()" [disabled]="guardando()">
-            <span class="btn-label">{{ editando() ? 'Guardar cambios' : 'Bloquear periodo' }}</span><span class="spinner"></span>
-          </button>
-        </div>
-        <p class="muted small" style="margin-top:14px">Mientras dure el bloqueo no aparecerán turnos libres. Si ya hay citas en ese rango, cancélalas primero desde la agenda.</p>
-      </form>
-    </div>`,
-})
-export class Bloqueos {
+@Injectable()
+export class BloqueosEstado {
   private readonly api = inject(BloqueosApi);
   private readonly dialog = inject(DialogService);
   private readonly toast = inject(ToastService);
 
-  protected readonly bloqueos = signal<BloqueoResponse[]>([]);
-  protected readonly cargado = signal(false);
-  protected readonly errorCarga = signal('');
-  protected readonly minimo = local(ahora());
+  readonly bloqueos = signal<BloqueoResponse[]>([]);
+  readonly cargado = signal(false);
+  readonly errorCarga = signal('');
+  readonly minimo = local(ahora());
 
   // Formulario
-  protected readonly editando = signal<BloqueoResponse | null>(null);
-  protected readonly desde = signal('');
-  protected readonly hasta = signal('');
-  protected readonly motivo = signal('');
-  protected readonly error = signal('');
-  protected readonly campoError = signal(false);
-  protected readonly guardando = signal(false);
+  readonly editando = signal<BloqueoResponse | null>(null);
+  readonly desde = signal('');
+  readonly hasta = signal('');
+  readonly motivo = signal('');
+  readonly error = signal('');
+  readonly campoError = signal(false);
+  readonly guardando = signal(false);
 
   constructor() {
     this.cargar();
   }
 
-  protected async cargar() {
+  async cargar() {
     this.errorCarga.set('');
     try {
       this.bloqueos.set(await firstValueFrom(this.api.listarVigentes()));
@@ -109,12 +51,12 @@ export class Bloqueos {
   }
 
   /** 'Del 20 de oct, 8:00 a. m. al 24 de oct, 6:00 p. m.' */
-  protected rango(b: BloqueoResponse) {
+  rango(b: BloqueoResponse) {
     const parte = (fh: string) => `${fmt(fh, { day: 'numeric', month: 'short' }).replace('.', '')}, ${fmtHora(horaDe(fh))}`;
     return `Del ${parte(b.fechaInicio)} al ${parte(b.fechaFin)}`;
   }
 
-  protected editar(b: BloqueoResponse) {
+  editar(b: BloqueoResponse) {
     this.editando.set(b);
     this.desde.set(local(b.fechaInicio));
     this.hasta.set(local(b.fechaFin));
@@ -123,7 +65,7 @@ export class Bloqueos {
     this.campoError.set(false);
   }
 
-  protected limpiar() {
+  limpiar() {
     this.editando.set(null);
     this.desde.set('');
     this.hasta.set('');
@@ -132,7 +74,7 @@ export class Bloqueos {
     this.campoError.set(false);
   }
 
-  protected async guardar(e: Event) {
+  async guardar(e: Event) {
     e.preventDefault();
     const desde = this.desde(), hasta = this.hasta();
     if (!desde || !hasta) return this.falla('Elige cuándo empieza y cuándo termina el bloqueo.');
@@ -156,7 +98,7 @@ export class Bloqueos {
     }
   }
 
-  protected async eliminar(b: BloqueoResponse) {
+  async eliminar(b: BloqueoResponse) {
     const ok = await this.dialog.confirm({
       title: '¿Quitar este bloqueo?',
       body: `${this.rango(b)} volverá a estar disponible para que los pacientes agenden.`,
@@ -177,4 +119,73 @@ export class Bloqueos {
     this.error.set(msg);
     this.campoError.set(true);
   }
+}
+
+@Component({
+  selector: 'app-bloqueos-lista',
+  imports: [Icon],
+  template: `
+    <section class="panel">
+      <header class="panel-head"><h2>Bloqueos de agenda</h2><span class="muted small">Vacaciones, congresos o ausencias</span></header>
+      @if (!e.cargado() || e.errorCarga()) {
+        <div class="empty" [attr.role]="e.errorCarga() ? 'alert' : 'status'">
+          @if (e.errorCarga()) {
+            <svg appIcon="alert"></svg><p>{{ e.errorCarga() }}</p>
+            <button class="btn btn-ghost btn-sm" (click)="e.cargar()"><svg appIcon="refresh"></svg> Reintentar</button>
+          } @else {
+            <svg appIcon="clock"></svg><p>Cargando tus bloqueos…</p>
+          }
+        </div>
+      } @else if (e.bloqueos().length) {
+        <div class="pref-list">
+          @for (b of e.bloqueos(); track b.id) {
+            <div class="pref" [class.is-editing]="e.editando()?.id === b.id">
+              <div><strong>{{ e.rango(b) }}</strong><span>{{ b.motivo || 'Sin motivo' }}</span></div>
+              <div class="row-actions">
+                <button type="button" class="btn btn-ghost btn-sm" (click)="e.editar(b)">Editar</button>
+                <button type="button" class="btn btn-soft-danger btn-sm" (click)="e.eliminar(b)">Quitar</button>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty"><svg appIcon="leaf"></svg><p>No tienes bloqueos próximos. Tu agenda sigue tu horario semanal.</p></div>
+      }
+    </section>`,
+})
+export class BloqueosLista {
+  protected readonly e = inject(BloqueosEstado);
+}
+
+@Component({
+  selector: 'app-bloqueo-form',
+  template: `
+    <form class="panel" novalidate (submit)="e.guardar($event)">
+      <header class="panel-head"><h2>{{ e.editando() ? 'Editar bloqueo' : 'Bloquear un periodo' }}</h2></header>
+      <div class="form-grid">
+        <div class="field" [class.has-error]="e.campoError()">
+          <label for="b-desde">Desde</label>
+          <input id="b-desde" type="datetime-local" step="900" [min]="e.minimo" [value]="e.desde()" (input)="e.desde.set($any($event.target).value)">
+        </div>
+        <div class="field" [class.has-error]="e.campoError()">
+          <label for="b-hasta">Hasta</label>
+          <input id="b-hasta" type="datetime-local" step="900" [min]="e.desde() || e.minimo" [value]="e.hasta()" (input)="e.hasta.set($any($event.target).value)">
+        </div>
+        <div class="field span-2">
+          <label for="b-motivo">Motivo <span class="muted">(opcional)</span></label>
+          <input id="b-motivo" type="text" maxlength="255" placeholder="Por ejemplo: congreso de medicina interna" [value]="e.motivo()" (input)="e.motivo.set($any($event.target).value)">
+        </div>
+      </div>
+      <p class="form-error" role="alert">{{ e.error() }}</p>
+      <div class="form-actions">
+        @if (e.editando()) { <button type="button" class="btn btn-ghost" (click)="e.limpiar()">Cancelar edición</button> }
+        <button type="submit" class="btn btn-primary" [class.is-loading]="e.guardando()" [disabled]="e.guardando()">
+          <span class="btn-label">{{ e.editando() ? 'Guardar cambios' : 'Bloquear periodo' }}</span><span class="spinner"></span>
+        </button>
+      </div>
+      <p class="muted small" style="margin-top:14px">Mientras dure el bloqueo no aparecerán turnos libres. Si ya hay citas en ese rango, cancélalas primero desde la agenda.</p>
+    </form>`,
+})
+export class BloqueoForm {
+  protected readonly e = inject(BloqueosEstado);
 }
