@@ -1,6 +1,5 @@
 <div class="login-form">
   <h1>Inicia sesión</h1>
-  <p class="lead">Entra con el correo y la contraseña de tu cuenta.</p>
 
   <form class="login-campos" novalidate (submit)="submit($event)">
     <div class="field" [class.has-error]="errField() === 'email'">
@@ -60,6 +59,5 @@
     </div>
 
     <p class="form-error" role="alert">{{ demoError() }}</p>
-    <p class="demo-nota">Los datos de ejemplo vuelven a su estado inicial cada noche.</p>
   </section>
 </div>
