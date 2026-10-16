@@ -2,22 +2,30 @@
 
 Sistema para gestionar citas médicas: los pacientes reservan, cancelan y reprograman citas; los doctores administran su horario y su agenda; el administrador gestiona doctores y especialidades. Incluye notificaciones por correo, seguridad con JWT y despliegue con Docker y HTTPS.
 
-El repositorio tiene dos partes:
+**El fuerte del proyecto es el backend**: una API REST en Spring Boot con reglas de negocio, control de concurrencia, seguridad y tests de integración contra un PostgreSQL real. El front en Angular es la interfaz para usarla y se construyó con [Spec-Driven Development asistido por IA](#front-spec-driven-development-con-ia).
 
 | Carpeta | Qué es |
 |---|---|
-| `medicas/` | API REST (Spring Boot) |
+| `medicas/` | API REST (Spring Boot), el núcleo del proyecto |
 | `front/clinica-celeste/` | Front (Angular), que consume la API |
 
-**Stack:** Java 21 · Spring Boot 4 · Spring Security (JWT) · Spring Data JPA · PostgreSQL 18 · Flyway · JUnit 5 + Mockito + Testcontainers · Angular 21 · Docker · Caddy
+- **Backend:** Java 21 · Spring Boot 4 · Spring Security (JWT) · Spring Data JPA · PostgreSQL 18 · Flyway · JUnit 5 + Mockito + Testcontainers
+- **Front:** Angular 21 · TypeScript
+- **Infraestructura:** Docker Compose · Caddy
 
 ```mermaid
 flowchart LR
-    Cliente["Navegador / Front"] -- HTTPS --> Caddy["Caddy<br/>(TLS, único puerto público)"]
-    Caddy -- HTTP interno --> App["Spring Boot"]
+    Navegador -- HTTPS --> Caddy["Caddy (puertos 80 y 443)<br/>certificado TLS y front de Angular"]
+    Caddy -- "/api/* por la red interna" --> App["Spring Boot"]
     App --> DB[("PostgreSQL")]
     App -- SMTP con STARTTLS --> Correo["Servidor de correo"]
 ```
+
+## Demo
+
+Por ahora no hay una versión publicada en internet. Para probarla en tu PC, levanta el proyecto como se explica en [Desarrollo](#desarrollo) y, en el login, usa **Entrar como paciente**, **Entrar como doctor** o **Entrar como administrador**: abren una cuenta de ejemplo sin registrarse.
+
+El proyecto está listo para publicarse como demo. Con `DEMO_HABILITADA=true` (ver [Producción](#producción)), la API recrea una clínica de ejemplo al arrancar y cada noche, con fechas calculadas desde ese día. Las cuentas de demo no tienen una contraseña conocida (se entra con `POST /api/auth/demo`) y no reciben correos.
 
 ## Funcionalidades
 
@@ -29,8 +37,6 @@ flowchart LR
 | **Todos** | Iniciar sesión, cambiar su contraseña, recuperarla por correo |
 
 Los pacientes reciben correos al confirmarse una cita, 24 horas antes y si el consultorio la cancela.
-
-**Demo:** el login ofrece entrar como paciente, doctor o administrador de una clínica de ejemplo, sin registrarse. Esas cuentas no tienen una contraseña conocida (se entra con `POST /api/auth/demo`), no reciben correos, y la clínica se recrea cada noche con fechas calculadas desde ese día.
 
 ### Ciclo de vida de una cita
 
@@ -46,28 +52,44 @@ stateDiagram-v2
 
 Reprogramar no cambia la fecha: cancela la cita y crea una nueva enlazada a la original, para conservar el historial.
 
-## Decisiones técnicas destacadas
+## Decisiones técnicas del backend
 
 **Concurrencia**
-- **Sin reservas dobles**: un índice único parcial en PostgreSQL (`doctor_id, fecha_hora` donde la cita no está cancelada) es la barrera final cuando dos pacientes reservan el mismo horario a la vez; el segundo recibe `409`. Probado con 10 reservas simultáneas contra un PostgreSQL real (Testcontainers).
-- **Límite de citas por paciente** (3 activas, 1 por doctor) con bloqueo pesimista (`SELECT … FOR UPDATE`): sin él, 8 reservas simultáneas de un mismo paciente pasaban todas.
-- **Bloqueo optimista** (`@Version`) para que dos cambios simultáneos sobre una cita no se pisen.
+- **Sin reservas dobles**: un índice único parcial en PostgreSQL, probado con 10 reservas simultáneas.
+- **Límite de citas por paciente** con bloqueo pesimista, y **bloqueo optimista** (`@Version`) en los cambios de una cita.
 
 **Seguridad**
-- **JWT revocable**: cada usuario tiene una versión de sesión que viaja en el token. Cambiar o restablecer la contraseña, o desactivar a un doctor, invalida al instante todas sus sesiones.
-- **Límite de intentos** por IP (login, registro y endpoints que envían correos) y por cuenta (5 fallos de login), con `429` y `Retry-After`.
-- **Verificación de email y recuperación de contraseña** con tokens aleatorios de un solo uso que vencen (24 h y 30 min). En la base solo se guarda su hash SHA-256, y el "un solo uso" lo garantiza un `DELETE` atómico.
-- **No revela qué cuentas existen**: el login responde lo mismo para un email inexistente o una contraseña incorrecta, y los endpoints de reenvío y recuperación responden siempre `202`.
-- **Archivos validados por contenido**: el certificado del doctor se comprueba por sus primeros bytes (no solo por la extensión) y se guarda con un nombre UUID, nunca con el original.
-- **Emails sin distinguir mayúsculas**, normalizados en el código y exigidos por un `CHECK` en la base.
-- **Demo pública sin llaves que robar**: las cuentas de demo guardan el hash de un secreto aleatorio descartado, así que nadie puede cambiarles la contraseña y dejar afuera a los demás. Un reinicio nocturno, en una sola transacción, deshace cualquier otro cambio.
+- **JWT revocable**: cambiar la contraseña o desactivar a un doctor cierra todas sus sesiones al instante.
+- **Límite de intentos** por IP y por cuenta (`429` con `Retry-After`).
+- **Tokens de un solo uso** para verificar el email y recuperar la contraseña; en la base solo se guarda su hash.
+- **No revela qué cuentas existen** en el login ni en la recuperación de contraseña.
+- **Archivos validados por su contenido**, no por la extensión.
 
 **Diseño**
-- **Máquina de estados como datos**: un `Map` inmutable de transiciones permitidas en lugar de `if` dispersos.
-- **Correos desacoplados**: los servicios publican eventos; los correos se envían después del commit (`@TransactionalEventListener` + `@Async`), con recordatorios programados y hasta 3 reintentos si el servidor de correo falla.
-- **Hora de la clínica explícita**: un `Clock` inyectado con la zona configurada. Al contenerizar, la app corría en UTC y creía que eran 5 horas más tarde; con el reloj inyectado, además, los tests pueden congelar el tiempo.
-- **Esquema versionado con Flyway** y `ddl-auto=validate`: Hibernate comprueba al arrancar que las entidades coinciden con las tablas.
-- **Errores uniformes** con `ProblemDetail` (RFC 9457) y mensajes en español.
+- **Máquina de estados** de la cita como datos, no como `if` dispersos.
+- **Correos por eventos**, enviados después del commit, con recordatorios y reintentos.
+- **Reloj inyectado** con la zona horaria de la clínica, para que los tests puedan congelar el tiempo.
+- **Esquema versionado con Flyway** y **errores uniformes** con `ProblemDetail` (RFC 9457).
+
+## Front: Spec-Driven Development con IA
+
+Mi especialidad es el backend y Angular era una tecnología nueva para mí. Para construir el front apliqué **Spec-Driven Development (SDD)**: primero se escribe una especificación detallada y después el código se genera a partir de ella, en este caso con asistencia de IA (Claude Code).
+
+1. **Especificación primero**: a partir de la API se definió qué hace cada pantalla (endpoints, códigos de error y cómo responder a cada uno), la arquitectura, las reglas de seguridad y un plan de pasos pequeños.
+2. **Implementación con IA**, un paso a la vez y siguiendo la especificación.
+3. **Revisión y verificación** de cada paso contra la API real, con pruebas automatizadas en el navegador (Playwright), antes de pasar al siguiente.
+
+### Seguridad en el front
+
+No bastaba con pedir "un front que funcione": la especificación incluyó reglas de seguridad que cada paso debía cumplir, y al final se hizo un repaso dedicado.
+
+- **El JWT vive en `sessionStorage`**, no en `localStorage`: sobrevive a una recarga y se borra al cerrar la pestaña.
+- **El token solo viaja a `/api`**, nunca a otros dominios (fuentes, CDNs).
+- **Un `401` cierra la sesión en un solo lugar**, ya sea porque el token venció o porque la API lo revocó.
+- **Los guards de rutas solo ordenan la navegación**: quien autoriza siempre es la API.
+- **Protección contra XSS**: ningún dato del usuario se inserta como HTML; se usa el escapado automático de Angular.
+- **El certificado del doctor se descarga con el token en la cabecera**, nunca en la URL.
+- **El front no guarda credenciales**: ni las de la demo ni en la consola o en los mensajes de error.
 
 ## Cómo ejecutarlo
 
@@ -164,3 +186,10 @@ front/clinica-celeste/src/app
  ├── layout           marco de la app y del acceso
  └── shared           componentes e íconos reutilizables
 ```
+
+## Autor
+
+**Daniel Hurtado** · Desarrollador backend
+
+- LinkedIn: [Daniel Hurtado](https://www.linkedin.com/in/dani-hurtado13/)
+- Correo: hurtadodaniel313@gmail.com
