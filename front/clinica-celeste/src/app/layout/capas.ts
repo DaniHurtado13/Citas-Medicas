@@ -75,16 +75,11 @@ export class Toasts {
 /* ---------- Pantalla de carga al iniciar sesión ---------- */
 @Component({
   selector: 'app-boot',
+  imports: [Icon],
   template: `
     @if (boot.visible()) {
       <div class="boot" [class.is-leaving]="boot.leaving()">
-        <svg class="boot-sprig" viewBox="0 0 64 64" aria-hidden="true">
-          <path class="b-stem" d="M32 60 C 31 46, 34 34, 32 8"/>
-          <path class="b-leaf" style="--d:0s"   d="M32 46 C 22 44, 14 38, 12 30 C 22 30, 30 36, 32 46 Z"/>
-          <path class="b-leaf" style="--d:.15s" d="M32 38 C 42 36, 50 30, 52 22 C 42 22, 34 28, 32 38 Z"/>
-          <path class="b-leaf" style="--d:.3s"  d="M32 26 C 24 24, 18 18, 17 11 C 25 12, 31 18, 32 26 Z"/>
-          <path class="b-leaf" style="--d:.45s" d="M32 18 C 38 16, 43 11, 44 5 C 38 6, 33 11, 32 18 Z"/>
-        </svg>
+        <div class="boot-logo"><svg appIcon="logo"></svg></div>
         <p>{{ boot.text() }}</p>
         <div class="boot-bar"><span></span></div>
       </div>
