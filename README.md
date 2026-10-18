@@ -29,15 +29,16 @@ Recorrido de cada rol con la clínica de ejemplo.
 
 **Paciente:** agenda una cita eligiendo especialidad, doctor y horario, y después la reprograma.
 
-<!-- VIDEO PACIENTE: arrastra aquí paciente.mp4 desde el editor de GitHub -->
+https://github.com/user-attachments/assets/8afc8fd7-c5a2-4737-b361-2176cf97be34
 
 **Doctor:** revisa su resumen y su agenda, cancela una cita y marca otra como atendida, y ajusta su horario semanal y sus bloqueos.
 
-<!-- VIDEO DOCTOR: arrastra aquí doctorN.mp4 desde el editor de GitHub -->
+https://github.com/user-attachments/assets/0e012ece-0166-4558-a76d-cfec4c5e2ef3
 
 **Administrador:** edita, deshabilita y crea doctores (con su certificado profesional) y gestiona las especialidades.
 
-<!-- VIDEO ADMIN: arrastra aquí adminN.mp4 desde el editor de GitHub -->
+https://github.com/user-attachments/assets/0fd754b1-0f3a-454b-9e4a-6bcd9e2240b3
+
 
 ### Capturas
 
