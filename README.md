@@ -23,6 +23,40 @@ flowchart LR
 
 ## Demo
 
+### En video
+
+Recorrido de cada rol con la clínica de ejemplo.
+
+**Paciente:** agenda una cita eligiendo especialidad, doctor y horario, y después la reprograma.
+
+<!-- VIDEO PACIENTE: arrastra aquí paciente.mp4 desde el editor de GitHub -->
+
+**Doctor:** revisa su resumen y su agenda, cancela una cita y marca otra como atendida, y ajusta su horario semanal y sus bloqueos.
+
+<!-- VIDEO DOCTOR: arrastra aquí doctorN.mp4 desde el editor de GitHub -->
+
+**Administrador:** edita, deshabilita y crea doctores (con su certificado profesional) y gestiona las especialidades.
+
+<!-- VIDEO ADMIN: arrastra aquí adminN.mp4 desde el editor de GitHub -->
+
+### Capturas
+
+**Registro con verificación de correo**
+
+| Formulario | Aviso al registrarse |
+|:---:|:---:|
+| ![Formulario para crear una cuenta de paciente](docs/capturas/registro-formulario.png) | ![Aviso para revisar el correo](docs/capturas/registro-revisa-correo.png) |
+| **Correo con el enlace de un solo uso** | **Cuenta confirmada** |
+| ![Correo de verificación con el enlace](docs/capturas/registro-correo-verificacion.png) | ![Pantalla de correo confirmado](docs/capturas/registro-cuenta-confirmada.png) |
+
+**Correos al paciente cuando el doctor cambia su cita** (en desarrollo llegan a Mailpit)
+
+| Confirmada | Cancelada por el consultorio |
+|:---:|:---:|
+| ![Correo de cita confirmada](docs/capturas/correo-cita-confirmada.png) | ![Correo de cita cancelada](docs/capturas/correo-cita-cancelada.png) |
+
+### Probarla en tu PC
+
 Por ahora no hay una versión publicada en internet. Para probarla en tu PC, levanta el proyecto como se explica en [Desarrollo](#desarrollo) y, en el login, usa **Entrar como paciente**, **Entrar como doctor** o **Entrar como administrador**: abren una cuenta de ejemplo sin registrarse.
 
 El proyecto está listo para publicarse como demo. Con `DEMO_HABILITADA=true` (ver [Producción](#producción)), la API recrea una clínica de ejemplo al arrancar y cada noche, con fechas calculadas desde ese día. Las cuentas de demo no tienen una contraseña conocida (se entra con `POST /api/auth/demo`) y no reciben correos.
